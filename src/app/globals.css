@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f8fafc; /* Slate 50 background */
+  --foreground: #0f172a; /* Slate 900 main text */
+  --foreground-light: #1e293b; /* Slate 800 secondary text */
+  --foreground-muted: #334155; /* Slate 700 muted text */
+  --card-bg: #ffffff; /* White card backgrounds */
+  --card-border: #e2e8f0; /* Slate 200 borders */
+  --card-border-alt: #f1f5f9;
+  --text-muted: #64748b; /* Slate 500 */
+  --input-bg: #ffffff;
+  --sidebar-bg: rgba(255, 255, 255, 0.95);
+}
+
+.dark {
+  --background: #020617; /* Slate 950 background */
+  --foreground: #f8fafc; /* Slate 50 main text */
+  --foreground-light: #f1f5f9; /* Slate 100 secondary text */
+  --foreground-muted: #cbd5e1; /* Slate 300 muted text */
+  --card-bg: #0f172a; /* Slate 900 card backgrounds */
+  --card-border: #1e293b; /* Slate 800 borders */
+  --card-border-alt: #0f172a;
+  --text-muted: #94a3b8; /* Slate 400 */
+  --input-bg: rgba(2, 6, 23, 0.5); /* Slate 950 */
+  --sidebar-bg: rgba(15, 23, 42, 0.85); /* Slate 900 */
+}
+
+@theme inline {
+  /* Override Tailwind slate colors dynamically using CSS variables */
+  --color-slate-950: var(--background);
+  --color-slate-900: var(--card-bg);
+  --color-slate-850: var(--card-border-alt);
+  --color-slate-800: var(--card-border);
+  --color-slate-100: var(--foreground);
+  --color-slate-200: var(--foreground-light);
+  --color-slate-300: var(--foreground-muted);
+  --color-slate-400: var(--text-muted);
+  
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card-bg: var(--card-bg);
+  --color-card-border: var(--card-border);
+  --color-card-hover-border: var(--card-hover-border);
+  --color-text-muted: var(--text-muted);
+  --color-input-bg: var(--input-bg);
+  --color-sidebar-bg: var(--sidebar-bg);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Announcements text marquee animation */
+@keyframes marquee {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
+
+.animate-marquee {
+  animation: marquee 25s linear infinite;
+}

@@ -1,0 +1,354 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String            @id @default(uuid())
+  name          String
+  email         String            @unique
+  password      String
+  role          String            @default("EMPLOYEE") // EMPLOYEE, MANAGER, HR_ADMIN
+  departmentId  String?
+  department    Department?       @relation(fields: [departmentId], references: [id])
+  managerId     String?
+  manager       User?             @relation("ManagerToEmployee", fields: [managerId], references: [id])
+  employees     User[]            @relation("ManagerToEmployee")
+  avatarUrl     String?
+  phone         String?
+  designation   String?
+  status        String            @default("ACTIVE") // ACTIVE, INACTIVE, ON_LEAVE, SUSPENDED
+  requiresPasswordChange Boolean @default(true)
+  xp                     Int               @default(0)
+  level                  Int               @default(1)
+  streak                 Int               @default(0)
+  lastActiveDate         String?
+  badges                 Badge[]
+  
+  attendances   Attendance[]
+  leaveRequests LeaveRequest[]    @relation("EmployeeLeaves")
+  approvedLeaves LeaveRequest[]   @relation("ApproverLeaves")
+  shifts        Shift[]
+  assignedTasks Task[]            @relation("AssigneeTasks")
+  ownedProjects Project[]         @relation("ProjectOwner")
+  projectMembers ProjectMember[]
+  goals         PerformanceGoal[]
+  documents     Document[]
+  notifications Notification[]
+  
+  salaryStructure SalaryStructure?
+  payslips      Payslip[]
+  expenseClaims ExpenseClaim[]    @relation("EmployeeExpenses")
+  approvedExpenses ExpenseClaim[] @relation("ApprovedExpenses")
+  kras          KRA[]
+  timesheets    Timesheet[]
+  appraisals    Appraisal[]       @relation("EmployeeAppraisals")
+  givenAppraisals Appraisal[]     @relation("ManagerAppraisals")
+  taxDeclarations TaxDeclaration[]
+  courseEnrollments CourseEnrollment[]
+  bankAccount   BankAccount?
+  
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+}
+
+model Department {
+  id             String       @id @default(uuid())
+  name           String
+  parentId       String?
+  parent         Department?  @relation("DepartmentHierarchy", fields: [parentId], references: [id])
+  subDepartments Department[] @relation("DepartmentHierarchy")
+  users          User[]
+  
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model Attendance {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      String    // YYYY-MM-DD
+  clockIn   DateTime
+  clockOut  DateTime?
+  status    String    // PRESENT, LATE, ABSENT, HALF_DAY
+  
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([userId, date])
+}
+
+model LeaveRequest {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation("EmployeeLeaves", fields: [userId], references: [id], onDelete: Cascade)
+  type       String    // SICK, ANNUAL, CASUAL, UNPAID
+  startDate  DateTime
+  endDate    DateTime
+  status     String    @default("PENDING") // PENDING, APPROVED, REJECTED
+  approverId String?
+  approver   User?     @relation("ApproverLeaves", fields: [approverId], references: [id])
+  reason     String?
+  
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+model Shift {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      String   // YYYY-MM-DD
+  startTime String   // "HH:MM"
+  endTime   String   // "HH:MM"
+  status    String   @default("SCHEDULED") // SCHEDULED, COMPLETED, ABSENT, SWAP_REQUESTED
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Project {
+  id          String          @id @default(uuid())
+  name        String
+  description String?
+  ownerId     String
+  owner       User            @relation("ProjectOwner", fields: [ownerId], references: [id])
+  members     ProjectMember[]
+  tasks       Task[]
+  timesheets  Timesheet[]
+  
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+model ProjectMember {
+  id        String   @id @default(uuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+
+  @@unique([projectId, userId])
+}
+
+model Task {
+  id              String    @id @default(uuid())
+  title           String
+  description     String?
+  assigneeId      String?
+  assignee        User?     @relation("AssigneeTasks", fields: [assigneeId], references: [id], onDelete: SetNull)
+  projectId       String?
+  project         Project?  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  status          String    @default("TODO") // TODO, IN_PROGRESS, REVIEW, DONE
+  dueDate         DateTime?
+  priority        String    @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+  
+  // Geofencing & Work session details
+  siteName        String?   @default("Field Site")
+  latitude        Float?    @default(12.9716)
+  longitude       Float?    @default(77.5946)
+  geofenceRadius  Float?    @default(200.0)
+  clockInTime     DateTime?
+  clockOutTime    DateTime?
+  clockInLat      Float?
+  clockInLng      Float?
+  clockOutLat     Float?
+  clockOutLng     Float?
+  actualDuration  Float?
+
+  // Bypass & Completion signatures
+  bypassRequested Boolean   @default(false)
+  bypassReason    String?
+  bypassApproved  Boolean   @default(false)
+  customerSignature String?
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model PerformanceGoal {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  progress  Float    @default(0.0) // 0 to 100
+  cycleId   String   // "Q1-2026", "Q2-2026", etc.
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Document {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type       String   // PAYSLIP, CONTRACT, CERTIFICATION
+  name       String
+  fileUrl    String
+  uploadedAt DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Badge {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  description String
+  icon        String   // Lucide icon name, e.g. "Award", "Zap", "Flame"
+  earnedAt    DateTime @default(now())
+}
+
+model SalaryStructure {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  basic     Float    @default(30000.0)
+  hra       Float    @default(15000.0)
+  allowance Float    @default(5000.0)
+  pf        Float    @default(1800.0)
+  tax       Float    @default(200.0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Payslip {
+  id             String   @id @default(uuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  month          Int
+  year           Int
+  workedDays     Int
+  unpaidLeaves   Int
+  earnings       Float
+  deductions     Float
+  reimbursements Float
+  netPay         Float
+  status         String   @default("PENDING") // PENDING, PAID
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([userId, month, year])
+}
+
+model ExpenseClaim {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation("EmployeeExpenses", fields: [userId], references: [id], onDelete: Cascade)
+  title        String
+  amount       Float
+  description  String?
+  status       String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  approvedById String?
+  approvedBy   User?    @relation("ApprovedExpenses", fields: [approvedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model KRA {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  target    Int
+  progress  Int      @default(0)
+  dueDate   DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Timesheet {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date        DateTime
+  hours       Float
+  projectId   String?
+  project     Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  description String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Appraisal {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation("EmployeeAppraisals", fields: [userId], references: [id], onDelete: Cascade)
+  managerId   String
+  manager     User     @relation("ManagerAppraisals", fields: [managerId], references: [id], onDelete: Cascade)
+  quarter     String   
+  year        Int
+  rating      Int      
+  feedback    String
+  status      String   @default("PUBLISHED") 
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model TaxDeclaration {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fiscalYear  String   // e.g., "2026-2027"
+  regime      String   @default("NEW") // OLD, NEW
+  section80C  Float    @default(0.0)
+  section80D  Float    @default(0.0)
+  status      String   @default("PENDING") // PENDING, VERIFIED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, fiscalYear])
+}
+
+model Course {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  videoUrl    String?
+  credits     Int      @default(10)
+  enrollments CourseEnrollment[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model CourseEnrollment {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId    String
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  progress    Int      @default(0) // 0 to 100
+  status      String   @default("ENROLLED") // ENROLLED, COMPLETED
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, courseId])
+}
+
+model BankAccount {
+  id             String   @id @default(uuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountName    String
+  accountNumber  String
+  routingNumber  String   // IFSC / Routing
+  bankName       String
+  isVerified     Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
