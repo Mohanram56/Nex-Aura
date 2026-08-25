@@ -205,7 +205,7 @@ export async function calculateMonthlyPayroll(userId: string, month: number, yea
     },
   });
 
-  const reimbursements = approvedClaims.reduce((sum, c) => sum + c.amount, 0);
+  const reimbursements = approvedClaims.reduce((sum: number, c: any) => sum + c.amount, 0);
 
   const earnings = basic + hra + allowance;
   const deductions = pf + tax + unpaidDeduction;
